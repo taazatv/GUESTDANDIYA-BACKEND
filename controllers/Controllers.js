@@ -35,32 +35,21 @@ exports.verifyCoupon = async (req, res) => {
 // Submit user info
 
 exports.uploadUserInfo = async (req, res) => {
-  const { name, phone, aadhaar, email, coupon, userReference } = req.body;
+  const { name, phone, aadhaar, email, coupon, eventDate, userReference } = req.body;
 
   try {
-    // 1) Coupon DB me check karo
-    const couponDoc = await Coupon.findOne({ Coupons: coupon });
-    if (!couponDoc) {
-      return res.status(400).json({ message: "Invalid coupon code" });
-    }
+    // Booking date
+    const bookingDate = new Date();
+    const bookingDateString = bookingDate.toLocaleDateString("en-GB"); // "dd/mm/yyyy"
 
-    // 2) Coupon ke DB se eventDate lo
-    const eventDate = new Date(couponDoc.eventDate);
-    if (isNaN(eventDate)) {
-      return res.status(400).json({ message: "Invalid event date in coupon" });
-    }
+    // Event date (dd-mm-yyyy format expected from DB / frontend)
+    const [day] = eventDate.split("-"); // sirf day le rahe hain
+    const dayString = day.padStart(2, "0"); // ensure 2 digit (e.g. "01")
 
-    // 3) Day nikaalo (2 digit)
-    const eventDay = eventDate.getDate().toString().padStart(2, "0"); // "29"
+    // Token generate
+    const token = coupon[0] + dayString + coupon.slice(1) + phone.slice(-4);
 
-    // 4) Token banao
-    const token =
-      coupon[0] + eventDay + coupon.slice(1) + phone.slice(-4);
-
-    // 5) Booking date (today)
-    const bookingDateString = new Date().toLocaleDateString("en-GB");
-
-    // 6) User save karo
+    // Create user
     const newUser = await User.create({
       name,
       phone,
@@ -73,25 +62,24 @@ exports.uploadUserInfo = async (req, res) => {
       eventDate
     });
 
-    // 7) Coupon ko used mark karo
+    // Mark coupon as used
     await Coupon.updateOne(
       { Coupons: coupon },
       { $set: { isUsed: true } }
     );
 
-    // 8) SMS bhejo (poora date dd/mm/yyyy)
-    const smsDate = eventDate.toLocaleDateString("en-GB"); // "29/09/2025"
-    const smsMessage = `Confirmed! Booking ID ${token}. You are entitled to 1 ticket dated ${smsDate} for Taaza Dandiya @Netaji Indoor Stadium subject to clearance of payment. T&C apply. Go to the Ticket counter at venue to redeem. -TaazaTv`;
-
+    // --- SMS Integration ---
     const smsUrl = `http://web.poweredsms.com/submitsms.jsp?user=TAZATV&key=44426475efXX&mobile=${encodeURIComponent(
       phone
-    )}&message=${encodeURIComponent(smsMessage)}&senderid=TAZATV&accusage=1&entityid=1201159437599755635&tempid=1407172691488658047`;
+    )}&message=${encodeURIComponent(
+      `Confirmed! Booking ID ${token}. You are entitled to ${1} tickets dated ${eventDate} for Taaza Dandiya @Netaji Indoor Stadium subject to clearance of payment. T%26C apply. Go to the Ticket counter at venue to redeem. -TaazaTv`
+    )}&senderid=TAZATV&accusage=1&entityid=1201159437599755635&tempid=1407172691488658047`;
 
     try {
       const smsResponse = await axios.get(smsUrl);
-      console.log("SMS sent successfully:", smsResponse.data);
-    } catch (smsErr) {
-      console.error("Error sending SMS:", smsErr.message);
+      console.log("SMS sent successfully to user:", smsResponse.data);
+    } catch (error) {
+      console.error("Error sending SMS to user:", error);
     }
 
     res.status(200).json({ msg: "Success", data: newUser, token });
@@ -100,8 +88,6 @@ exports.uploadUserInfo = async (req, res) => {
     res.status(500).json({ message: "Something went wrong" });
   }
 };
-
-
 
 
 // Get all users
