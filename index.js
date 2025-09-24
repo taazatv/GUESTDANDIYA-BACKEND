@@ -7,14 +7,26 @@ const Route = require('./route/Route');
 
 const app = express();
 
-app.use(cors());
+
+app.use(cors({
+  origin: "*", 
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
+
 app.use('/api', Route);
 
-mongoose.connect(config.DB_URL)
+mongoose.connect(config.DB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
 .then(() => console.log("Database Connected"))
 .catch(err => console.log("Database Connection Failed:", err));
 
-app.listen(config.PORT, () => console.log(`Server running on port ${config.PORT}`));
+// ✅ Render PORT fix
+const PORT = process.env.PORT || config.PORT || 8000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
