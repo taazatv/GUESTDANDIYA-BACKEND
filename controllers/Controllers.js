@@ -33,7 +33,7 @@ exports.verifyCoupon = async (req, res) => {
 };
 
 // Submit user info
-// controller (assumes `axios` is already required at top of the file)
+
 exports.uploadUserInfo = async (req, res) => {
   const { name, phone, aadhaar, email, coupon, userReference } = req.body;
 
