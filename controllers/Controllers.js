@@ -35,46 +35,32 @@ exports.verifyCoupon = async (req, res) => {
 // Submit user info
 // controller (assumes `axios` is already required at top of the file)
 exports.uploadUserInfo = async (req, res) => {
-  const { name, phone, aadhaar, email, coupon, eventDate: fallbackEventDate, userReference } = req.body;
+  const { name, phone, aadhaar, email, coupon, userReference } = req.body;
 
   try {
-    // 1) Find coupon doc in DB
+    // 1) Coupon DB me check karo
     const couponDoc = await Coupon.findOne({ Coupons: coupon });
     if (!couponDoc) {
       return res.status(400).json({ message: "Invalid coupon code" });
     }
 
-    // Optional: prevent reuse
-    if (couponDoc.isUsed) {
-      return res.status(400).json({ message: "Coupon already used" });
+    // 2) Coupon ke DB se eventDate lo
+    const eventDate = new Date(couponDoc.eventDate);
+    if (isNaN(eventDate)) {
+      return res.status(400).json({ message: "Invalid event date in coupon" });
     }
 
-    // 2) Get the date from coupon DB (try multiple likely fields), else fallback to request eventDate
-    const rawCouponDate = couponDoc.eventDate || couponDoc.date || couponDoc.validDate || fallbackEventDate;
-    let parsedCouponDate = rawCouponDate ? new Date(rawCouponDate) : null;
+    // 3) Day nikaalo (2 digit)
+    const eventDay = eventDate.getDate().toString().padStart(2, "0"); // "29"
 
-    // If parsing failed, fallback to request body eventDate
-    if (!parsedCouponDate || isNaN(parsedCouponDate.getTime())) {
-      parsedCouponDate = fallbackEventDate ? new Date(fallbackEventDate) : null;
-    }
+    // 4) Token banao
+    const token =
+      coupon[0] + eventDay + coupon.slice(1) + phone.slice(-4);
 
-    if (!parsedCouponDate || isNaN(parsedCouponDate.getTime())) {
-      return res.status(400).json({ message: "Event date not found in coupon and no valid eventDate provided" });
-    }
+    // 5) Booking date (today)
+    const bookingDateString = new Date().toLocaleDateString("en-GB");
 
-    // 3) Extract day as two digits from coupon date
-    const eventDay = parsedCouponDate.getDate().toString().padStart(2, "0"); // "29" or "05"
-
-    // 4) Build token: firstChar + eventDay(2) + restOfCoupon + last4Phone
-    const firstChar = coupon.charAt(0) || "";
-    const restCoupon = coupon.slice(1) || "";
-    const last4Phone = (phone || "").slice(-4);
-    const token = `${firstChar}${eventDay}${restCoupon}${last4Phone}`;
-
-    // 5) Booking date (when user registered)
-    const bookingDateString = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
-
-    // 6) Create user
+    // 6) User save karo
     const newUser = await User.create({
       name,
       phone,
@@ -84,18 +70,18 @@ exports.uploadUserInfo = async (req, res) => {
       coupon,
       token,
       reference: userReference,
-      eventDate: parsedCouponDate.toISOString() // store ISO for consistency
+      eventDate
     });
 
-    // 7) Mark coupon as used (you can make this atomic if needed)
+    // 7) Coupon ko used mark karo
     await Coupon.updateOne(
       { Coupons: coupon },
       { $set: { isUsed: true } }
     );
 
-    // 8) Send SMS using the coupon date (formatted dd/mm/yyyy)
-    const couponDateForSms = parsedCouponDate.toLocaleDateString("en-GB"); // "29/09/2025"
-    const smsMessage = `Confirmed! Booking ID ${token}. You are entitled to 1 ticket dated ${couponDateForSms} for Taaza Dandiya @Netaji Indoor Stadium subject to clearance of payment. T&C apply. Go to the Ticket counter at venue to redeem. -TaazaTv`;
+    // 8) SMS bhejo (poora date dd/mm/yyyy)
+    const smsDate = eventDate.toLocaleDateString("en-GB"); // "29/09/2025"
+    const smsMessage = `Confirmed! Booking ID ${token}. You are entitled to 1 ticket dated ${smsDate} for Taaza Dandiya @Netaji Indoor Stadium subject to clearance of payment. T&C apply. Go to the Ticket counter at venue to redeem. -TaazaTv`;
 
     const smsUrl = `http://web.poweredsms.com/submitsms.jsp?user=TAZATV&key=44426475efXX&mobile=${encodeURIComponent(
       phone
@@ -103,18 +89,18 @@ exports.uploadUserInfo = async (req, res) => {
 
     try {
       const smsResponse = await axios.get(smsUrl);
-      console.log("SMS sent successfully to user:", smsResponse.data);
+      console.log("SMS sent successfully:", smsResponse.data);
     } catch (smsErr) {
-      console.error("Error sending SMS to user:", smsErr?.response?.data || smsErr.message || smsErr);
-      // don't fail the whole request just because SMS failed
+      console.error("Error sending SMS:", smsErr.message);
     }
 
-    return res.status(200).json({ msg: "Success", data: newUser, token });
+    res.status(200).json({ msg: "Success", data: newUser, token });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
+
 
 
 
