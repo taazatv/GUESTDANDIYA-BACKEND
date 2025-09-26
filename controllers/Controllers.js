@@ -38,19 +38,13 @@ exports.uploadUserInfo = async (req, res) => {
   const { name, phone, aadhaar, email, coupon, eventDate, userReference } = req.body;
 
   try {
-    // Check if phone already exists
-    const existingUser = await User.findOne({ phone });
-    if (existingUser) {
-      return res.status(200).json({ phoneExists: true });
-    }
-
     // Booking date
     const bookingDate = new Date();
     const bookingDateString = bookingDate.toLocaleDateString("en-GB"); // "dd/mm/yyyy"
 
     // Event date (dd-mm-yyyy format expected from DB / frontend)
-    const [day] = eventDate.split("-");
-    const dayString = day.padStart(2, "0");
+    const [day] = eventDate.split("-"); // sirf day le rahe hain
+    const dayString = day.padStart(2, "0"); // ensure 2 digit (e.g. "01")
 
     // Token generate
     const token = coupon[0] + dayString + coupon.slice(1) + phone.slice(-4);
@@ -74,6 +68,7 @@ exports.uploadUserInfo = async (req, res) => {
       { $set: { isUsed: true } }
     );
 
+
     const smsUrl = `http://web.poweredsms.com/submitsms.jsp?user=TAZATV&key=44426475efXX&mobile=${encodeURIComponent(
       phone
     )}&message=${encodeURIComponent(
@@ -87,13 +82,12 @@ exports.uploadUserInfo = async (req, res) => {
       console.error("Error sending SMS to user:", error);
     }
 
-    res.status(200).json({ msg: "Success", data: newUser, token, phoneExists: false });
+    res.status(200).json({ msg: "Success", data: newUser, token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
-
 
 
 // Get all users
