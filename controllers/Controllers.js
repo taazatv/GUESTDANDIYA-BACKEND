@@ -72,7 +72,7 @@ exports.uploadUserInfo = async (req, res) => {
     const smsUrl = `http://web.poweredsms.com/submitsms.jsp?user=TAZATV&key=44426475efXX&mobile=${encodeURIComponent(
       phone
     )}&message=${encodeURIComponent(
-      `Booking ID ${token} booked through ROHJHA. You are entitled to ${1} ticket(s) for ${eventDate} Taaza Dandiya @Netaji Indoor Stadium subject to clearance of payment. T%26C apply. Go to the Ticket counter at venue to redeem. -Taaza Infotainment pvt ltd`
+      `Booking ID ${token} booked through ${coupon}. You are entitled to ${1} ticket(s) for ${eventDate} Taaza Dandiya @Netaji Indoor Stadium subject to clearance of payment. T%26C apply. Go to the Ticket counter at venue to redeem. -Taaza Infotainment pvt ltd`
     )}&senderid=TAZATV&accusage=1&accusage=1&entityid=1201159437599755635&tempid=1407175880257275969`;
 
     try {
