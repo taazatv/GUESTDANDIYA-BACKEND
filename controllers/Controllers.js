@@ -69,7 +69,7 @@ exports.uploadUserInfo = async (req, res) => {
     );
 
     // --- SMS Integration ---
-    const smsUrl = ` ${encodeURIComponent(
+    const smsUrl = `http://web.poweredsms.com/submitsms.jsp?user=TAZATV&key=44426475efXX&mobile=${encodeURIComponent(
       phone
     )}&message=${encodeURIComponent(
       `Confirmed! Booking ID ${token}. You are entitled to ${1} ticket dated ${eventDate} for Taaza Dandiya @Netaji Indoor Stadium. Rights of admission reserved. T%26C apply. Go to the Ticket counter at venue to redeem. -Taaza Infotainment pvt ltd`
