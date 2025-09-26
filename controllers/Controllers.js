@@ -68,7 +68,7 @@ exports.uploadUserInfo = async (req, res) => {
       { $set: { isUsed: true } }
     );
 
-    // --- SMS Integration ---
+
     const smsUrl = `http://web.poweredsms.com/submitsms.jsp?user=TAZATV&key=44426475efXX&mobile=${encodeURIComponent(
       phone
     )}&message=${encodeURIComponent(
